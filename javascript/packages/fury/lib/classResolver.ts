@@ -74,7 +74,7 @@ const uninitSerialize = {
   },
 };
 
-export default class SerializerResolver {
+export default class ClassResolver {
   private internalSerializer: Serializer[] = new Array(300);
   private customSerializer: { [key: string]: Serializer } = {
   };
@@ -170,7 +170,7 @@ export default class SerializerResolver {
   createTagWriter(tag: string) {
     this.writeStringIndex.push(-1);
     const idx = this.writeStringIndex.length - 1;
-    const fullBuffer = SerializerResolver.tagBuffer(tag);
+    const fullBuffer = ClassResolver.tagBuffer(tag);
 
     return {
       write: (binaryWriter: TBinaryWriter) => {
@@ -230,6 +230,10 @@ export default class SerializerResolver {
 
     if (typeof v === "string") {
       return this.getSerializerById(InternalSerializerType.STRING);
+    }
+
+    if (v instanceof Uint8Array) {
+      return this.getSerializerById(InternalSerializerType.BINARY);
     }
 
     if (v instanceof Map) {

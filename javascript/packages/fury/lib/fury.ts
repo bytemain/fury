@@ -29,7 +29,7 @@ import { generateSerializer, AnySerializer } from "./gen";
 export default class {
   binaryReader: BinaryReaderType;
   binaryWriter: BinaryWriterType;
-  classResolver = new ClassResolver();
+  classResolver: ClassResolver;
   referenceResolver: ReturnType<typeof ReferenceResolver>;
   anySerializer: AnySerializer;
 
@@ -41,6 +41,8 @@ export default class {
   }) {
     this.binaryReader = BinaryReader(config);
     this.binaryWriter = BinaryWriter(config);
+    this.classResolver = new ClassResolver();
+
     this.referenceResolver = ReferenceResolver(config, this.binaryWriter, this.binaryReader);
     this.classResolver.init(this);
     this.anySerializer = new AnySerializer(this);

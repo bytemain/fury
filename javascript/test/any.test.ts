@@ -116,12 +116,25 @@ describe('bool', () => {
 
     test('should write Array work', () => {
         const fury = new Fury();
-        const obj = [1,2,3]
+        const obj = [1,2,3, '1234']
         const bin = fury.serialize(obj);
         const ret = fury.deserialize(bin);
         expect(ret instanceof Array).toBe(true)
         expect(ret).toEqual(obj)
     });
+
+    test('should write binary work', () => {
+        const fury = new Fury();
+        const obj = new Uint8Array([1,2,3])
+        const bin = fury.serialize(obj);
+        const ret = fury.deserialize(bin);
+        expect(ret instanceof Uint8Array).toBe(true)
+        expect(Uint8Array.from(ret)).toEqual(obj)
+    });
+
+    test('should write object work', () => {
+
+    })
 
     test('should root any work', () => {
         const fury = new Fury();
