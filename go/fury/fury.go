@@ -126,41 +126,44 @@ func (f *Fury) Serialize(buf *ByteBuffer, v interface{}, callback BufferCallback
 		buffer = f.buffer
 		buffer.writerIndex = 0
 	}
-	if f.language == XLANG {
-		buffer.WriteInt16(MAGIC_NUMBER)
-	} else {
+	if f.language != XLANG {
 		return fmt.Errorf("%d language is not supported", f.language)
 	}
+
+	// magic number: used to identify fury serialization protocol, current version use 0x62d4.
+	buffer.WriteInt16(MAGIC_NUMBER)
+
+	// write second 8 bits
 	var bitmap byte = 0
+
+	// null flag: 1 when object is null, 0 otherwise. If an object is null, other bits won't be set.
 	if isNil(reflect.ValueOf(v)) {
 		bitmap |= isNilFlag
 	}
+	// endian flag: 1 when data is encoded by little endian, 0 for big endian.
 	if nativeEndian == binary.LittleEndian {
 		bitmap |= isLittleEndianFlag
 	}
-	// set reader as x_lang.
-	if f.language == XLANG {
-		bitmap |= isCrossLanguageFlag
-	} else {
-		return fmt.Errorf("%d language is not supported", f.language)
-	}
+
+	// xlang flag: 1 when serialization uses xlang format, 0 when serialization uses Fury java format.
+	bitmap |= isCrossLanguageFlag
+
+	// oob flag: 1 when passed BufferCallback is not null, 0 otherwise.
 	if callback != nil {
 		bitmap |= isOutOfBandFlag
 	}
 	if err := buffer.WriteByte(bitmap); err != nil {
 		return err
 	}
-	if f.language != XLANG {
-		return fmt.Errorf("%d language is not supported", f.language)
-	} else {
-		if err := buffer.WriteByte(GO); err != nil {
-			return err
-		}
-		buffer.WriteInt32(0) // preserve 4-byte for nativeObjects start offsets.
-		buffer.WriteInt32(0)
-		if err := f.Write(buffer, v); err != nil {
-			return err
-		}
+
+	// 1 byte, language: the language when serializing objects.
+	if err := buffer.WriteByte(GO); err != nil {
+		return err
+	}
+	buffer.WriteInt32(0) // preserve 4-byte for nativeObjects start offsets.
+	buffer.WriteInt32(0)
+	if err := f.Write(buffer, v); err != nil {
+		return err
 	}
 	return nil
 }
@@ -181,7 +184,11 @@ func (f *Fury) Write(buffer *ByteBuffer, v interface{}) (err error) {
 	case byte: // uint8
 		f.WriteByte_(buffer, v)
 	default:
-		err = f.WriteReferencable(buffer, reflect.ValueOf(v))
+		if f.referenceTracking {
+			err = f.WriteReferencable(buffer, reflect.ValueOf(v))
+		} else {
+			err = f.writeNonReferencableBySerializer(buffer, reflect.ValueOf(v), nil)
+		}
 	}
 	return
 }
@@ -283,15 +290,14 @@ func (f *Fury) writeValue(buffer *ByteBuffer, value reflect.Value, serializer Se
 			if err := f.typeResolver.writeTypeTag(buffer, typeTag); err != nil {
 				return err
 			}
-		}
-		if typeId < NotSupportCrossLanguage {
+		} else if typeId < NotSupportCrossLanguage {
 			if err := f.typeResolver.writeType(buffer, type_); err != nil {
 				return err
 			}
 		}
 		return serializer.Write(f, buffer, value)
 	} else {
-		return fmt.Errorf("type %v not supported", type_)
+		return fmt.Errorf("type %v is not supported", type_)
 	}
 }
 

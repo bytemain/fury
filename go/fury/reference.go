@@ -36,7 +36,8 @@ const (
 
 // RefResolver class is used to track objects that have already been read or written.
 type RefResolver struct {
-	refTracking    bool
+	refTracking bool
+	// FIXME: the value type of the map should be uint32
 	writtenObjects map[refKey]int32
 	readObjects    []reflect.Value
 	readRefIds     []int32
